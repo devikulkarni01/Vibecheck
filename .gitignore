@@ -1,0 +1,28 @@
+# Secrets — never commit
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+.eggs/
+venv/
+.venv/
+env/
+
+# macOS
+.DS_Store
+
+# Editor / tooling
+.idea/
+.vscode/
+*.swp
+
+# Claude Code internal artifacts
+.claude/EDIT_LOG.md

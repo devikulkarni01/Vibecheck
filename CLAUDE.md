@@ -86,24 +86,32 @@ supabase.table("mention_analyses").select("*").eq("competitor", "Toggl").lt("sen
 POST https://www.reddit.com/api/v1/access_token
   grant_type=client_credentials
   Authorization: Basic base64(REDDIT_CLIENT_ID:REDDIT_CLIENT_SECRET)
-  User-Agent: script:CompetitiveIntelBot:v1.0 (by /u/<username>)
+  User-Agent: script:CompetitiveIntelBot:v1.0 (by /u/Real_Experience_3832)
 
 # Search endpoint (use oauth.reddit.com, not www)
 GET https://oauth.reddit.com/r/{subreddit}/search
   ?q={term}&restrict_sr=true&limit=100&sort=relevance&t=all&after={cursor}
   Authorization: bearer {token}
-  User-Agent: script:CompetitiveIntelBot:v1.0 (by /u/<username>)
+  User-Agent: script:CompetitiveIntelBot:v1.0 (by /u/Real_Experience_3832)
 ```
 
-Response shape: `data.children[]` → each child is `{kind: "t3", data: {...}}`.
+Response shape: `data.children[]` → each child is `{kind: "t3", data: {...}}` (posts) or `{kind: "t1", data: {...}}` (comments).
 Pagination: `data.after` is the cursor for the next page (`null` = last page).
 Rate limit: 60 req/min with OAuth. `time.sleep(1)` between pages is sufficient.
+
+Scraping scope (v1 — manual runs only):
+- Collects posts (`t3`) only — the `/r/{sub}/search` endpoint does not return comments
+- Comment support (`t1`) is implemented in the code but requires a separate comment-thread fetch (future work)
+- MAX_PAGES = 1 per (term × subreddit) pair — caps at 100 results per pair
+- Total max requests per run: 18 terms × 15 subreddits × 1 page = 270 requests (~4.5 min at 1 req/s)
+- Increase MAX_PAGES in a later release once volume is validated
 
 Popularity thresholds (discard below, never upsert):
 - POST_MIN_SCORE = 5, POST_MIN_COMMENTS = 2
 - COMMENT_MIN_SCORE = 2
 
 Read active search terms from search_terms table at runtime (not hardcoded).
+String-match pre-filter: discard posts whose body contains no competitor name (case-insensitive). Applied before upsert.
 Upsert to raw_mentions by Reddit ID (`name` field = fullname e.g. `t3_abc123`).
 Retry on 429: exponential backoff 5s, max 3 retries.
 Accept --dry-run flag.
@@ -159,22 +167,39 @@ added_at timestamptz DEFAULT now(), added_by text DEFAULT 'system'
 -- indexes
 CREATE INDEX ON mention_analyses(competitor, feature);
 CREATE INDEX ON mention_analyses(analyzed_at);
+CREATE INDEX ON mention_analyses(mention_id);  -- FK join to raw_mentions for subreddit filter
 CREATE INDEX ON raw_mentions(scraped_at);
+CREATE INDEX ON raw_mentions(subreddit);  -- heatmap subreddit filter (join side)
 ```
 
 RLS: anonymous SELECT on all tables. Anonymous INSERT/UPDATE on search_terms only.
 Python scripts use service role key. Seed search_terms with all competitor names.
 
 ## Dashboard (index.html)
-Supabase URL + anon key as JS constants at top of file. Four tabs:
+Supabase URL + anon key as JS constants at top of file. Three tabs (v1):
 
 1. **Heatmap** — competitors × features, avg sentiment_score, red→yellow→green.
-   Filters: date range, subreddit. Click cell → opens Pain Points tab filtered.
-2. **Pain points** — paginated mentions for selected competitor + feature.
-   Sort by sentiment_score asc or Reddit score.
-3. **Opportunity matrix** — features where all competitors avg < threshold (slider, default 0.45).
-4. **Keyword manager** — search_terms table, toggle active, add new terms.
-   Note: changes apply on next scheduled run.
+   Filters: subreddit. Summary columns (total mentions + avg score) per competitor row.
+   Empty rows/columns auto-deselected on load. Click cell → opens inline Pain Points drawer below heatmap.
+2. **Pain points** — inline drawer below heatmap. Paginated mentions, sort by sentiment or Reddit score.
+   Supporting quotes shown inline per row.
+3. **Opportunity matrix** — two categories:
+   - Features where all competitors avg < threshold (slider, default 0.45) → weak sentiment gap
+   - Features with zero mentions across all competitors → unexplored market (shown with "no data" badge)
+
+## v2 Roadmap (do not build until v1 is validated)
+- **Keyword Manager tab** — search_terms table CRUD (anon key already supports INSERT/UPDATE on search_terms)
+- **localStorage threshold** — persist opportunity threshold slider value across sessions
+- **Historical trend view** — time-series chart of sentiment per competitor/feature over time
+- **GitHub Actions trigger button** — "Run Collection" button calling `workflow_dispatch` API; show run status
+- **Add cron schedule** (`0 6 * * *`) after validating manual run volume and cost; add `~/.cache/huggingface` cache step so cardiffnlp model is not re-downloaded on every run
+- **Mobile responsive layout** — heatmap horizontal scroll + compact cards on narrow viewports
+- **Auth wall** — Supabase Auth or Edge Function with server-rendered token if dashboard goes semi-public
+- **Comment collection** — extend scraper to fetch comment threads (t1 type) for richer signal
+- **Sentiment modal** — click sentiment badge to open inline tooltip/modal with full supporting_quote context
+- **utils.py** — extract shared logic: `mentions_competitor` regex (duplicated in scraper.py and analyzer.py), Supabase client init, env-var loading, and the COMPETITORS/FEATURES constants so all three files share a single source of truth
+- **Unbounded DB queries** — `build_skip_set` and `fetch_unanalyzed` in analyzer.py fetch all rows with no server-side filter; push the skip-set join into Postgres (`.not_("id", "in", subquery)`) before data volume makes these slow
+- **Anthropic error handling** — wrap `call_haiku` in `try/except anthropic.APIError` so rate-limit and network errors skip the batch gracefully instead of crashing the run
 
 ## Cost rules
 1. String-match pre-filter before any API call
@@ -186,7 +211,11 @@ Supabase URL + anon key as JS constants at top of file. Four tabs:
 7. cardiffnlp pipeline loaded once per process
 
 ## GitHub Actions (.github/workflows/run.yml)
-Cron: 06:00 UTC daily + workflow_dispatch.
+**v1: manual trigger only** (`workflow_dispatch`). No scheduled cron — scraping is initiated from the dashboard UI.
+> TODO: Add a "Run Collection" button to index.html (Dashboard tab or Keyword Manager tab) that triggers
+> `workflow_dispatch` via the GitHub Actions API. Button should show run status and disable while in progress.
+> Add the cron schedule (`0 6 * * *`) only after validating manual run volume and cost.
+
 Install torch CPU: `pip install torch --index-url https://download.pytorch.org/whl/cpu`
 Cache ~/.cache/huggingface between runs.
 Secrets: SUPABASE_URL, SUPABASE_KEY, SUPABASE_SERVICE_KEY, ANTHROPIC_API_KEY, REDDIT_CLIENT_ID, REDDIT_CLIENT_SECRET
