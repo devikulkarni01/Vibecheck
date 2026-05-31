@@ -43,20 +43,69 @@ Zapier integration, project tool integrations, accounting integrations,
 ease of use, onboarding, customer support, UI design, pricing, free tier,
 privacy concerns, surveillance concerns, accuracy, reliability
 
+## Supabase client usage (see [Documentation-Supabase.md](Documentation-Supabase.md) for full reference)
+
+**Python (`scraper.py`, `analyzer.py`) — service role key, bypasses RLS:**
+```python
+from supabase import create_client
+supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+
+# Upsert by Reddit ID (on_conflict must match UNIQUE constraint)
+supabase.table("raw_mentions").upsert(row, on_conflict="id").execute()
+
+# Filter query
+supabase.table("mention_analyses").select("*").eq("competitor", "Toggl").lt("sentiment_score", 0.45).execute()
+# response.data → list of dicts
+```
+
+**JS (`index.html`) — anon key, RLS enforced, CDN only, no build step:**
+```html
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  const { createClient } = supabase
+  const client = createClient(SUPABASE_URL, SUPABASE_KEY)  // anon key
+
+  // Query with filters
+  const { data, error } = await client.from('mention_analyses')
+    .select('*').eq('competitor', 'Toggl').lt('sentiment_score', 0.45)
+    .order('sentiment_score', { ascending: true }).range(0, 49)
+
+  // Upsert (rows not returned by default — chain .select() if needed)
+  await client.from('search_terms').upsert({ term: 'clockify' }, { onConflict: 'term' })
+</script>
+```
+
 ## Reddit scraping
+
+> **OAuth required.** Unauthenticated `*.json` requests return 403 as of Reddit's 2023 API policy.
+> Register a "script" app at reddit.com/prefs/apps and use client_credentials flow.
+> See [Documentation-RedditAPI.md](Documentation-RedditAPI.md) for full reference.
+
 ```
-GET https://www.reddit.com/r/{subreddit}/search.json
-  ?q={term}&restrict_sr=true&limit=100&sort=relevance&t=all
-User-Agent: CompetitiveIntelBot/1.0
-Rate limit: time.sleep(1) between requests
-Pagination: follow data.after up to 3 pages
+# Token fetch at startup (expires in 1h)
+POST https://www.reddit.com/api/v1/access_token
+  grant_type=client_credentials
+  Authorization: Basic base64(REDDIT_CLIENT_ID:REDDIT_CLIENT_SECRET)
+  User-Agent: script:CompetitiveIntelBot:v1.0 (by /u/<username>)
+
+# Search endpoint (use oauth.reddit.com, not www)
+GET https://oauth.reddit.com/r/{subreddit}/search
+  ?q={term}&restrict_sr=true&limit=100&sort=relevance&t=all&after={cursor}
+  Authorization: bearer {token}
+  User-Agent: script:CompetitiveIntelBot:v1.0 (by /u/<username>)
 ```
+
+Response shape: `data.children[]` → each child is `{kind: "t3", data: {...}}`.
+Pagination: `data.after` is the cursor for the next page (`null` = last page).
+Rate limit: 60 req/min with OAuth. `time.sleep(1)` between pages is sufficient.
+
 Popularity thresholds (discard below, never upsert):
 - POST_MIN_SCORE = 5, POST_MIN_COMMENTS = 2
 - COMMENT_MIN_SCORE = 2
 
 Read active search terms from search_terms table at runtime (not hardcoded).
-Upsert to raw_mentions by Reddit ID. Retry on 429: exponential backoff 5s, max 3 retries.
+Upsert to raw_mentions by Reddit ID (`name` field = fullname e.g. `t3_abc123`).
+Retry on 429: exponential backoff 5s, max 3 retries.
 Accept --dry-run flag.
 
 ## Analysis pipeline
@@ -79,6 +128,14 @@ supporting_quote: ≤20 words. Return [] if no signal.
 **Layer 2 — cardiffnlp model (deterministic scoring)**
 Run on supporting_quote from Layer 1. Load pipeline once at startup, reuse across batches.
 Truncate to 128 tokens before inference. Outputs: sentiment_label + sentiment_score (0.0–1.0).
+
+Model details (see [Documentation-Roberta.md](Documentation-Roberta.md) for full reference):
+- Load: `pipeline("text-classification", model="cardiffnlp/twitter-roberta-base-topic-sentiment-latest")`
+- Call: `pipe(quote, truncation=True, max_length=128)` → `[{'label': str, 'score': float}]`
+- Five labels: `strongly negative`, `negative`, `negative or neutral`, `positive`, `strongly positive`
+- sentiment_label = `result[0]['label']`, sentiment_score = `result[0]['score']`
+- No preprocessing needed — model handles @mentions, #hashtags, and URLs natively
+- Hard token ceiling is 512; 128-token truncation is a safe conservative limit
 
 ## Schema
 
@@ -132,7 +189,7 @@ Supabase URL + anon key as JS constants at top of file. Four tabs:
 Cron: 06:00 UTC daily + workflow_dispatch.
 Install torch CPU: `pip install torch --index-url https://download.pytorch.org/whl/cpu`
 Cache ~/.cache/huggingface between runs.
-Secrets: SUPABASE_URL, SUPABASE_KEY, SUPABASE_SERVICE_KEY, ANTHROPIC_API_KEY
+Secrets: SUPABASE_URL, SUPABASE_KEY, SUPABASE_SERVICE_KEY, ANTHROPIC_API_KEY, REDDIT_CLIENT_ID, REDDIT_CLIENT_SECRET
 Runs: scraper.py → analyzer.py. No HTML commit step.
 
 ## Env vars
@@ -141,7 +198,10 @@ SUPABASE_URL          # Settings → API → Project URL
 SUPABASE_KEY          # Settings → API → anon public  (safe in client JS with RLS)
 SUPABASE_SERVICE_KEY  # Settings → API → service_role (Python only, never client-side)
 ANTHROPIC_API_KEY     # console.anthropic.com → API Keys
+REDDIT_CLIENT_ID      # reddit.com/prefs/apps → script app → client_id (under app name)
+REDDIT_CLIENT_SECRET  # reddit.com/prefs/apps → script app → secret
 ```
+Reddit token is ephemeral (1h TTL) — fetch at scraper startup, never store as a secret.
 
 ## Everything Claude Code conventions
 For every component: /documentation-lookup → /prp-prd → /prp-plan → /prp-implement → /code-review
