@@ -1,11 +1,1438 @@
-<html>
+<!DOCTYPE html>
+<html lang="en">
 
 <head>
-    <title>Vibecheck</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vibecheck — Competitive Intelligence</title>
+    <style>
+        :root {
+            --bg: #f8f7f5;
+            --surface: #ffffff;
+            --border: #e8e5e0;
+            --text-primary: #1a1916;
+            --text-secondary: #6b6760;
+            --text-muted: #a09d99;
+            --accent: #4a6fa5;
+            --accent-light: #e8eef7;
+            --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            --space-xs: 4px;
+            --space-sm: 8px;
+            --space-md: 16px;
+            --space-lg: 24px;
+            --space-xl: 40px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font);
+            background: var(--bg);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+
+        /* ── Header ── */
+        header {
+            padding: var(--space-md) var(--space-xl);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: var(--space-md);
+            background: var(--surface);
+        }
+
+        header h1 {
+            font-size: 1.05rem;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+        }
+
+        header .tagline {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        /* ── Tab bar ── */
+        .tab-bar {
+            display: flex;
+            border-bottom: 1px solid var(--border);
+            background: var(--surface);
+            padding: 0 var(--space-xl);
+        }
+
+        .tab-btn {
+            padding: 10px var(--space-md);
+            font-size: 0.875rem;
+            border: none;
+            background: none;
+            cursor: pointer;
+            color: var(--text-secondary);
+            border-bottom: 2px solid transparent;
+            margin-bottom: -1px;
+            transition: color 120ms;
+            font-family: var(--font);
+        }
+
+        .tab-btn.active {
+            color: var(--accent);
+            border-bottom-color: var(--accent);
+            font-weight: 500;
+        }
+
+        .tab-btn:hover:not(.active) {
+            color: var(--text-primary);
+        }
+
+        /* ── Sections ── */
+        .tab-section {
+            padding: var(--space-lg) var(--space-xl);
+        }
+
+        /* ── Filter bar ── */
+        .filter-bar {
+            display: flex;
+            gap: var(--space-sm);
+            flex-wrap: wrap;
+            margin-bottom: var(--space-lg);
+            align-items: center;
+        }
+
+        .filter-bar label {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .filter-bar select {
+            font-size: 0.8rem;
+            padding: 5px 8px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--surface);
+            color: var(--text-primary);
+            font-family: var(--font);
+        }
+
+        /* ── Collapsible filter pickers ── */
+        details {
+            margin-bottom: var(--space-sm);
+        }
+
+        details summary {
+            cursor: pointer;
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            user-select: none;
+            padding: 4px 0;
+        }
+
+        details summary:hover {
+            color: var(--text-secondary);
+        }
+
+        .pill-select {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+            padding: var(--space-sm) 0;
+        }
+
+        .pill {
+            padding: 3px 10px;
+            border-radius: 99px;
+            font-size: 0.75rem;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            cursor: pointer;
+            color: var(--text-muted);
+            transition: all 100ms;
+            font-family: var(--font);
+        }
+
+        .pill.active {
+            background: var(--accent-light);
+            color: var(--accent);
+            border-color: #c5d8f0;
+        }
+
+        /* ── Heatmap ── */
+        .heatmap-wrap {
+            overflow-x: auto;
+            overflow-y: auto;
+            max-height: 65vh;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--surface);
+        }
+
+        #heatmap-table {
+            border-collapse: collapse;
+            font-size: 0.75rem;
+        }
+
+        /* Sticky column header row */
+        #heatmap-table thead th {
+            background: var(--surface);
+            position: sticky;
+            top: 0;
+            z-index: 2;
+            padding: 6px 8px;
+            text-align: center;
+            font-weight: 500;
+            color: var(--text-secondary);
+            border-bottom: 1px solid var(--border);
+            white-space: normal;
+            word-break: break-word;
+            max-width: 90px;
+            line-height: 1.3;
+        }
+
+        /* Sticky row header (first column) */
+        #heatmap-table tbody th {
+            position: sticky;
+            left: 0;
+            background: var(--surface);
+            z-index: 1;
+            min-width: 110px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            border-right: 1px solid var(--border);
+            padding: 6px 10px;
+            text-align: left;
+            white-space: nowrap;
+        }
+
+        /* Top-left corner cell */
+        #heatmap-table thead th:first-child {
+            left: 0;
+            z-index: 3;
+            min-width: 110px;
+            text-align: left;
+        }
+
+        #heatmap-table td {
+            padding: 8px 10px;
+            text-align: center;
+            cursor: pointer;
+            border: 1px solid rgba(0, 0, 0, 0.03);
+            font-variant-numeric: tabular-nums;
+            transition: opacity 100ms;
+            min-width: 72px;
+            min-height: 36px;
+            font-size: 0.75rem;
+        }
+
+        #heatmap-table td:hover {
+            opacity: 0.7;
+            outline: 2px solid var(--accent);
+            outline-offset: -1px;
+        }
+
+        #heatmap-table td.no-data {
+            color: var(--text-muted);
+            cursor: default;
+        }
+
+        #heatmap-table td.no-data:hover {
+            opacity: 1;
+            outline: none;
+        }
+
+        /* ── Sentiment badge ── */
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 99px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        /* ── Pain Points ── */
+        .back-link {
+            font-size: 0.8rem;
+            color: var(--accent);
+            cursor: pointer;
+            margin-bottom: var(--space-md);
+            display: inline-block;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+
+        .section-title {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .section-subtitle {
+            font-size: 0.825rem;
+            color: var(--text-secondary);
+            margin-bottom: var(--space-lg);
+        }
+
+        .pp-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+
+        .pp-table th {
+            text-align: left;
+            padding: var(--space-sm) var(--space-md);
+            border-bottom: 2px solid var(--border);
+            color: var(--text-secondary);
+            font-weight: 500;
+            font-size: 0.78rem;
+            cursor: pointer;
+            user-select: none;
+            white-space: nowrap;
+        }
+
+        .pp-table th:hover {
+            color: var(--text-primary);
+        }
+
+        .pp-table td {
+            padding: var(--space-sm) var(--space-md);
+            border-bottom: 1px solid var(--border);
+            vertical-align: top;
+        }
+
+        .pp-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .pp-table tr:hover td {
+            background: var(--bg);
+        }
+
+        .pp-quote {
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            font-style: italic;
+            margin-top: 3px;
+            line-height: 1.5;
+        }
+
+        .pp-link {
+            font-size: 0.75rem;
+            color: var(--accent);
+            text-decoration: none;
+            margin-top: 2px;
+            display: inline-block;
+        }
+
+        .pp-link:hover {
+            text-decoration: underline;
+        }
+
+        /* ── Opportunity Matrix ── */
+        .opp-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+
+        .opp-table th {
+            text-align: left;
+            padding: var(--space-sm) var(--space-md);
+            border-bottom: 2px solid var(--border);
+            color: var(--text-secondary);
+            font-weight: 500;
+            font-size: 0.78rem;
+        }
+
+        .opp-table td {
+            padding: var(--space-sm) var(--space-md);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .opp-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .slider-wrap {
+            display: flex;
+            gap: var(--space-sm);
+            align-items: center;
+            margin-bottom: var(--space-md);
+        }
+
+        .slider-wrap label {
+            font-size: 0.825rem;
+            color: var(--text-secondary);
+        }
+
+        .slider-wrap input[type="range"] {
+            width: 180px;
+            accent-color: var(--accent);
+        }
+
+        .slider-val {
+            font-size: 0.875rem;
+            color: var(--text-primary);
+            min-width: 3ch;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* ── Pill select controls ── */
+        .pill-select-controls {
+            display: flex;
+            gap: 6px;
+            padding: 4px 0 2px;
+        }
+
+        .pill-ctrl-btn {
+            padding: 2px 10px;
+            border-radius: 99px;
+            font-size: 0.72rem;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            cursor: pointer;
+            color: var(--text-secondary);
+            font-family: var(--font);
+            transition: all 100ms;
+        }
+
+        .pill-ctrl-btn:hover {
+            background: var(--accent-light);
+            color: var(--accent);
+            border-color: #c5d8f0;
+        }
+
+        /* ── Pagination ── */
+        .pagination {
+            display: flex;
+            gap: var(--space-sm);
+            align-items: center;
+            margin-top: var(--space-md);
+            font-size: 0.825rem;
+            color: var(--text-secondary);
+        }
+
+        .pagination button {
+            padding: 4px 10px;
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            background: var(--surface);
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-family: var(--font);
+        }
+
+        .pagination button:disabled {
+            opacity: 0.35;
+            cursor: default;
+        }
+
+        .pagination button:not(:disabled):hover {
+            background: var(--accent-light);
+        }
+
+        /* ── States ── */
+        .loading {
+            padding: var(--space-xl);
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        .empty-state {
+            padding: var(--space-xl);
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.875rem;
+            line-height: 1.8;
+        }
+
+        .error-banner {
+            padding: var(--space-sm) var(--space-md);
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            border-radius: 6px;
+            color: #b91c1c;
+            font-size: 0.825rem;
+            margin-bottom: var(--space-md);
+        }
+
+        /* ── Pain Points drawer ── */
+        .pp-drawer {
+            margin-top: var(--space-lg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--surface);
+            overflow: hidden;
+        }
+
+        .pp-drawer-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--space-sm) var(--space-md);
+            border-bottom: 1px solid var(--border);
+            background: var(--bg);
+            flex-wrap: wrap;
+            gap: var(--space-sm);
+        }
+
+        .pp-close {
+            padding: 4px 10px;
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            background: var(--surface);
+            cursor: pointer;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            font-family: var(--font);
+            line-height: 1;
+        }
+
+        .pp-close:hover {
+            color: var(--text-primary);
+            background: var(--bg);
+        }
+
+        /* ── Summary columns ── */
+        .summary-col {
+            border-right: 1px solid var(--border) !important;
+            background: #fafaf9 !important;
+            font-variant-numeric: tabular-nums;
+            min-width: 60px;
+            cursor: default !important;
+        }
+
+        .summary-col:hover {
+            opacity: 1 !important;
+            outline: none !important;
+        }
+
+        #heatmap-table thead .summary-col {
+            border-right: 1px solid var(--border);
+            background: #fafaf9;
+        }
+
+        /* ── Selected cell highlight ── */
+        #heatmap-table td.selected {
+            outline: 2px solid var(--accent) !important;
+            outline-offset: -2px;
+            opacity: 1 !important;
+        }
+
+        /* ── About ── */
+        .about-section {
+            margin-bottom: var(--space-xl);
+        }
+
+        .about-section h3 {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: var(--space-sm);
+            padding-bottom: var(--space-xs);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .about-section p {
+            font-size: 0.875rem;
+            line-height: 1.7;
+            color: var(--text-secondary);
+            margin-bottom: var(--space-sm);
+        }
+
+        .about-section ul,
+        .about-section ol {
+            padding-left: var(--space-lg);
+            margin-bottom: var(--space-sm);
+        }
+
+        .about-section li {
+            font-size: 0.875rem;
+            line-height: 1.7;
+            color: var(--text-secondary);
+            margin-bottom: 2px;
+        }
+
+        /* ── Table wrapper ── */
+        .table-surface {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+    </style>
 </head>
 
 <body>
-    <h1>Vibecheck</h1>
+
+    <!-- ─── Constants — replace REPLACE_ME values before opening ──────────────── -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        const SUPABASE_URL = 'https://vgytpkofafliqgbdcaqx.supabase.co'  // e.g. https://xxxx.supabase.co
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZneXRwa29mYWZsaXFnYmRjYXF4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwODgxMjksImV4cCI6MjA5NTY2NDEyOX0.q1U1S0-xgYXWpTWK_6FqtGbsEkBMHYsNd7WiTv3yvf8'  // anon/public key — safe in browser with RLS
+
+        const { createClient } = supabase
+        const client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+
+        const COMPETITORS = [
+            'Rize', 'Timely', 'Reclaim.ai', 'TimeCamp', 'Memtime', 'Timeular',
+            'Clockk', 'Hubstaff', 'Toggl Track', 'Toggl', 'Clockify', 'Harvest',
+            'RescueTime', 'Carly AI', 'Replicon', 'ZeroTime', 'Kickidler', 'Flowace',
+        ]
+
+        const FEATURES = [
+            'automatic time tracking', 'manual time tracking', 'voice time tracking',
+            'voice capture', 'speech to text', 'offline tracking',
+            'timer accuracy', 'background tracking', 'browser extension', 'desktop app',
+            'mobile app', 'GPS tracking', 'invoicing', 'billing', 'payment processing',
+            'expense tracking', 'budget tracking', 'AI features', 'smart scheduling',
+            'AI insights', 'AI reports', 'meeting detection', 'calendar AI',
+            'employee monitoring', 'screenshots', 'team analytics', 'team dashboard',
+            'project budgeting', 'payroll integration', 'geofencing', 'calendar sync',
+            'Jira integration', 'Asana integration', 'Slack integration',
+            'QuickBooks integration', 'Xero integration', 'API access', 'data export',
+            'excel export', 'Zapier integration', 'project tool integrations',
+            'accounting integrations', 'ease of use', 'onboarding', 'customer support',
+            'UI design', 'pricing', 'free tier', 'privacy concerns',
+            'surveillance concerns', 'accuracy', 'reliability',
+        ]
+
+        const SUBREDDITS = [
+            'all', 'freelance', 'freelancedesign', 'consulting', 'smallbusiness',
+            'webdev', 'graphic_design', 'productivityapps', 'workforcemanagement',
+            'Entrepreneur', 'productivity', 'timetracking', 'timetrackingsoftware', 'remotework',
+        ]
+    </script>
+
+    <!-- ─── Header ──────────────────────────────────────────────────────────────── -->
+    <header>
+        <h1>Vibecheck</h1>
+        <span class="tagline">Competitive intelligence · Time-tracking market</span>
+    </header>
+
+    <!-- ─── Tab bar ─────────────────────────────────────────────────────────────── -->
+    <nav class="tab-bar">
+        <button class="tab-btn active" data-tab="heatmap">Heatmap</button>
+        <button class="tab-btn" data-tab="opportunity">Opportunity Matrix</button>
+        <button class="tab-btn" data-tab="about" style="margin-left:auto">About</button>
+    </nav>
+
+    <!-- ═══════════════════════════════════════════════════════════════════════════ -->
+    <!-- SECTION: Heatmap                                                           -->
+    <!-- ═══════════════════════════════════════════════════════════════════════════ -->
+    <section id="section-heatmap" class="tab-section">
+
+        <!-- Subreddit pill filter -->
+        <details id="sub-details" style="margin-bottom:var(--space-sm)">
+            <summary id="sub-summary">Filter subreddits (all selected)</summary>
+            <div class="pill-select-controls">
+                <button class="pill-ctrl-btn" id="sub-select-all">Select all</button>
+                <button class="pill-ctrl-btn" id="sub-deselect-all">Deselect all</button>
+            </div>
+            <div id="subreddit-pills" class="pill-select"></div>
+        </details>
+
+        <!-- Competitor pill filter -->
+        <details id="comp-details">
+            <summary id="comp-summary">Filter competitors (all selected)</summary>
+            <div class="pill-select-controls">
+                <button class="pill-ctrl-btn" id="comp-select-all">Select all</button>
+                <button class="pill-ctrl-btn" id="comp-deselect-all">Deselect all</button>
+            </div>
+            <div id="competitor-pills" class="pill-select"></div>
+        </details>
+
+        <!-- Feature pill filter -->
+        <details id="feat-details" style="margin-bottom:var(--space-lg)">
+            <summary id="feat-summary">Filter features (all selected)</summary>
+            <div class="pill-select-controls">
+                <button class="pill-ctrl-btn" id="feat-select-all">Select all</button>
+                <button class="pill-ctrl-btn" id="feat-deselect-all">Deselect all</button>
+            </div>
+            <div id="feature-pills" class="pill-select"></div>
+        </details>
+
+        <!-- Error / loading / table -->
+        <div id="heatmap-error" class="error-banner" hidden></div>
+        <div id="heatmap-loading" class="loading">Loading heatmap…</div>
+        <div id="heatmap-empty" class="empty-state" hidden>
+            No mentions found for the selected filters.<br>
+            Try selecting "All subreddits" or adjusting the competitor/feature filters.
+        </div>
+        <div class="heatmap-wrap" id="heatmap-wrap" hidden>
+            <table id="heatmap-table"></table>
+        </div>
+
+        <!-- Inline pain points drawer — appears below heatmap on cell click -->
+        <div id="pp-drawer" class="pp-drawer" hidden>
+            <div class="pp-drawer-header">
+                <div>
+                    <span class="section-title" id="drawer-title"></span>
+                    <span style="font-size:0.78rem;color:var(--text-muted);margin-left:8px">Reddit mentions</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:var(--space-sm)">
+                    <label style="font-size:0.8rem;color:var(--text-secondary);display:flex;align-items:center;gap:5px">
+                        Sort by
+                        <select id="pp-sort">
+                            <option value="sentiment">Lowest sentiment first</option>
+                            <option value="reddit">Highest Reddit score first</option>
+                        </select>
+                    </label>
+                    <button class="pp-close" id="pp-close" title="Close">✕</button>
+                </div>
+            </div>
+            <div id="pp-error" class="error-banner" hidden></div>
+            <div id="pp-loading" class="loading" hidden>Loading mentions…</div>
+            <div id="pp-empty" class="empty-state" hidden>
+                No mentions found for this combination.<br>
+                This competitor × feature pair may not have been scraped yet.
+            </div>
+            <div id="pp-no-filter" class="empty-state" hidden></div>
+            <div class="table-surface" id="pp-table-wrap" hidden>
+                <table class="pp-table" id="pp-table"></table>
+            </div>
+            <div class="pagination" id="pp-pagination" hidden></div>
+        </div>
+
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════════════════════════ -->
+    <!-- SECTION: Opportunity Matrix                                                  -->
+    <!-- ═══════════════════════════════════════════════════════════════════════════ -->
+    <section id="section-opportunity" class="tab-section" hidden>
+
+        <p class="section-title">Opportunity Matrix</p>
+        <p class="section-subtitle">
+            Features where every competitor scores below the threshold, or where no Reddit signal exists yet — both are
+            potential gaps to build into your roadmap.
+        </p>
+
+        <div class="slider-wrap">
+            <label for="opp-threshold">Threshold:</label>
+            <input type="range" id="opp-threshold" min="0.10" max="1.00" step="0.05" value="0.45">
+            <span class="slider-val" id="opp-threshold-val">0.45</span>
+        </div>
+
+        <div id="opp-no-data" class="empty-state" hidden>
+            Load the heatmap first to compute opportunities.
+        </div>
+        <div id="opp-empty" class="empty-state" hidden>
+            No features found below this threshold.<br>
+            Try raising the threshold.
+        </div>
+        <div class="table-surface" id="opp-table-wrap" hidden>
+            <table class="opp-table" id="opp-table"></table>
+        </div>
+
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════════════════════════ -->
+    <!-- SECTION: About                                                              -->
+    <!-- ═══════════════════════════════════════════════════════════════════════════ -->
+    <section id="section-about" class="tab-section" hidden>
+        <div style="max-width:680px">
+
+            <p class="section-title" style="margin-bottom:var(--space-lg)">About Vibecheck</p>
+
+            <p style="margin-bottom:var(--space-lg);line-height:1.7;color:var(--text-secondary)">
+                Vibecheck is a competitive intelligence tool that monitors what people say about time-tracking software
+                on Reddit. It surfaces patterns in how users praise or complain about specific tools, so the product
+                team can identify gaps competitors are failing to fill.
+            </p>
+
+            <div class="about-section">
+                <h3>What it does</h3>
+                <p>Every time the tool is run, it:</p>
+                <ol>
+                    <li>Searches Reddit for mentions of competitor tools across relevant communities</li>
+                    <li>Saves the posts that meet a quality bar</li>
+                    <li>Analyzes each post to extract what tool is being discussed and what feature is being praised or
+                        criticized</li>
+                    <li>Scores the sentiment of each mention</li>
+                    <li>Displays everything in a dashboard organized by tool and feature</li>
+                </ol>
+            </div>
+
+            <div class="about-section">
+                <h3>Data collection</h3>
+                <p><strong>Where the data comes from</strong><br>
+                    Reddit posts from 15 communities including r/freelance, r/productivity, r/consulting, r/webdev, and
+                    r/timetracking.</p>
+                <p><strong>What is searched</strong><br>
+                    18 competitor tools: Toggl, Clockify, Harvest, Hubstaff, Timely, RescueTime, TimeCamp, Rize,
+                    Reclaim.ai, and others.</p>
+                <p><strong>How often it runs</strong><br>
+                    Manually triggered for now. Automatic daily scheduling will be added once data volume is validated.
+                </p>
+                <p><strong>What gets collected</strong><br>
+                    Only posts (comment collection is planned). Each search retrieves up to 100 posts per tool per
+                    community.</p>
+                <p><strong>Quality filters</strong></p>
+                <ul>
+                    <li>At least 5 upvotes and 2 replies</li>
+                    <li>Post body or title must contain an exact competitor name match</li>
+                    <li>Deleted or removed posts are discarded</li>
+                </ul>
+            </div>
+
+            <div class="about-section">
+                <h3>Analysis</h3>
+                <p><strong>Step 1 — Extraction (AI)</strong><br>
+                    Claude Haiku reads batches of 25 posts and identifies: which competitor is being discussed, which
+                    feature is the subject, and a short quote capturing the key opinion.</p>
+                <p><strong>Step 2 — Sentiment scoring (local model)</strong><br>
+                    A RoBERTa model runs locally (no API cost) and assigns a sentiment score 0–1 plus a label: strongly
+                    negative, negative, negative or neutral, positive, or strongly positive.</p>
+            </div>
+
+            <div class="about-section">
+                <h3>Dashboard views</h3>
+                <ul>
+                    <li><strong>Heatmap</strong> — Competitors × features, colored by average sentiment. Filterable by
+                        community.</li>
+                    <li><strong>Pain Points</strong> — Click any heatmap cell to read the individual Reddit posts behind
+                        that score.</li>
+                    <li><strong>Opportunity Matrix</strong> — Features where every competitor scores below a threshold —
+                        potential product gaps.</li>
+                </ul>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- ─── Main JS ──────────────────────────────────────────────────────────────── -->
+    <script>
+        'use strict'
+
+        // ── Color scale ────────────────────────────────────────────────────────────────
+        // Skewed: red (0) → orange (0.35) → yellow (0.55) → green (0.80+)
+        // Keeps most of the range warm/yellow; reserve green for genuinely high scores.
+        function scoreToColor(score) {
+            if (score === null || score === undefined) return 'hsl(0,0%,94%)'
+            const s = Number(score)
+            // Map score to hue with a steeper curve: green only above 0.75
+            const hue = Math.round(s * s * 130)  // quadratic: 0→0, 0.5→32, 0.75→73, 1→130
+            const sat = 55 + Math.round(s * 20)   // 55–75%: more vivid at extremes
+            const lit = 90 - Math.round(s * 18)   // 90–72%: darker = more saturated feel
+            return `hsla(${hue}, ${sat}%, ${lit}%, 0.88)`
+        }
+
+        // ── Global filter state ────────────────────────────────────────────────────────
+        const filters = {
+            subreddits: [],  // empty = all subreddits
+            competitors: [], // empty = all
+            features: [],    // empty = all
+        }
+
+        // Cached heatmap result — shared with opportunity matrix
+        let heatmapData = null  // { map, activeCompetitors, activeFeatures }
+
+        // ── Pain Points state ──────────────────────────────────────────────────────────
+        const ppState = {
+            competitor: null,
+            feature: null,
+            page: 0,
+            sortBy: 'sentiment',
+            hasFilter: false,
+        }
+
+        // ── Tab navigation ─────────────────────────────────────────────────────────────
+        function showTab(name) {
+            const valid = ['heatmap', 'opportunity', 'about']
+            if (!valid.includes(name)) name = 'heatmap'
+            document.querySelectorAll('.tab-section').forEach(s => { s.hidden = true })
+            document.getElementById(`section-${name}`).hidden = false
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'))
+            document.querySelector(`.tab-btn[data-tab="${name}"]`).classList.add('active')
+            history.replaceState(null, '', `#${name}`)
+        }
+
+        function initTabs() {
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.addEventListener('click', () => showTab(btn.dataset.tab))
+            })
+            window.addEventListener('hashchange', () => {
+                const tab = location.hash.replace('#', '') || 'heatmap'
+                showTab(tab)
+            })
+            const initial = location.hash.replace('#', '') || 'heatmap'
+            showTab(initial)
+        }
+
+        // ── Error helpers ──────────────────────────────────────────────────────────────
+        function showError(id, msg) {
+            const el = document.getElementById(id)
+            if (!el) return
+            el.textContent = `Error: ${msg}`
+            el.hidden = false
+        }
+        function hideError(id) {
+            const el = document.getElementById(id)
+            if (el) el.hidden = true
+        }
+
+        // ── Filter UI init ─────────────────────────────────────────────────────────────
+        function initFilters() {
+            // Subreddit pills (exclude 'all' sentinel — empty array = all subreddits)
+            const subredditList = SUBREDDITS.filter(s => s !== 'all')
+            buildPills('subreddit-pills', subredditList, filters.subreddits, () => { updateSubSummary(); applyFilters() })
+
+            // Competitor pills — re-fetch immediately on toggle
+            buildPills('competitor-pills', COMPETITORS, filters.competitors, () => { updateCompSummary(); applyFilters() })
+            // Feature pills — re-render immediately on toggle (no re-fetch needed; data already loaded)
+            buildPills('feature-pills', FEATURES, filters.features, () => { updateFeatSummary(); reRenderHeatmap() })
+
+            // Select all / Deselect all — subreddits
+            document.getElementById('sub-select-all').addEventListener('click', () => {
+                document.querySelectorAll('#subreddit-pills .pill').forEach(p => p.classList.add('active'))
+                filters.subreddits.length = 0
+                document.querySelectorAll('#subreddit-pills .pill').forEach(p => filters.subreddits.push(p.dataset.value))
+                updateSubSummary(); applyFilters()
+            })
+            document.getElementById('sub-deselect-all').addEventListener('click', () => {
+                document.querySelectorAll('#subreddit-pills .pill').forEach(p => p.classList.remove('active'))
+                filters.subreddits.length = 0
+                updateSubSummary(); applyFilters()
+            })
+
+            // Select all / Deselect all — competitors
+            document.getElementById('comp-select-all').addEventListener('click', () => {
+                document.querySelectorAll('#competitor-pills .pill').forEach(p => p.classList.add('active'))
+                filters.competitors.length = 0
+                document.querySelectorAll('#competitor-pills .pill').forEach(p => filters.competitors.push(p.dataset.value))
+                updateCompSummary(); applyFilters()
+            })
+            document.getElementById('comp-deselect-all').addEventListener('click', () => {
+                document.querySelectorAll('#competitor-pills .pill').forEach(p => p.classList.remove('active'))
+                filters.competitors.length = 0
+                updateCompSummary(); applyFilters()
+            })
+
+            // Select all / Deselect all — features
+            document.getElementById('feat-select-all').addEventListener('click', () => {
+                document.querySelectorAll('#feature-pills .pill').forEach(p => p.classList.add('active'))
+                filters.features.length = 0
+                document.querySelectorAll('#feature-pills .pill').forEach(p => filters.features.push(p.dataset.value))
+                updateFeatSummary(); reRenderHeatmap()
+            })
+            document.getElementById('feat-deselect-all').addEventListener('click', () => {
+                document.querySelectorAll('#feature-pills .pill').forEach(p => p.classList.remove('active'))
+                filters.features.length = 0
+                updateFeatSummary(); reRenderHeatmap()
+            })
+        }
+
+        function buildPills(containerId, items, stateArr, onUpdate) {
+            const wrap = document.getElementById(containerId)
+            items.forEach(item => {
+                const btn = document.createElement('button')
+                btn.className = 'pill active'
+                btn.textContent = item
+                btn.dataset.value = item
+                btn.addEventListener('click', () => {
+                    btn.classList.toggle('active')
+                    // Rebuild stateArr from DOM
+                    stateArr.length = 0
+                    wrap.querySelectorAll('.pill.active').forEach(p => stateArr.push(p.dataset.value))
+                    onUpdate()
+                })
+                wrap.appendChild(btn)
+            })
+        }
+
+        function updateSubSummary() {
+            const total = SUBREDDITS.filter(s => s !== 'all').length
+            const active = filters.subreddits.length
+            const el = document.getElementById('sub-summary')
+            el.textContent = active === 0
+                ? 'Filter subreddits (all selected)'
+                : `Filter subreddits (${active} of ${total} selected)`
+        }
+
+        function updateCompSummary() {
+            const active = filters.competitors.length
+            const el = document.getElementById('comp-summary')
+            el.textContent = active === 0
+                ? 'Filter competitors (all selected)'
+                : `Filter competitors (${active} of ${COMPETITORS.length} selected)`
+        }
+        function updateFeatSummary() {
+            const active = filters.features.length
+            const el = document.getElementById('feat-summary')
+            el.textContent = active === 0
+                ? 'Filter features (all selected)'
+                : `Filter features (${active} of ${FEATURES.length} selected)`
+        }
+
+        // Sync competitor pill active state to match a given list
+        function syncCompetitorPills(activeList) {
+            const set = new Set(activeList)
+            document.querySelectorAll('#competitor-pills .pill').forEach(p => {
+                p.classList.toggle('active', set.has(p.dataset.value))
+            })
+            const el = document.getElementById('comp-summary')
+            el.textContent = `Filter competitors (${activeList.length} of ${COMPETITORS.length} have data)`
+        }
+
+        // Sync feature pill active state to match a given list
+        function syncFeaturePills(activeList) {
+            const set = new Set(activeList)
+            document.querySelectorAll('#feature-pills .pill').forEach(p => {
+                p.classList.toggle('active', set.has(p.dataset.value))
+            })
+            const el = document.getElementById('feat-summary')
+            el.textContent = `Filter features (${activeList.length} of ${FEATURES.length} have data)`
+        }
+
+        // ── Heatmap data fetch ─────────────────────────────────────────────────────────
+        async function fetchHeatmapRows() {
+            // Join raw_mentions so subreddit filter works client-side.
+            // Left join (not !inner) so rows without a raw_mention are kept when no subreddit filter.
+            const { data, error } = await client
+                .from('mention_analyses')
+                .select('competitor, feature, sentiment_score, raw_mentions(subreddit)')
+
+            if (error) { showError('heatmap-error', error.message); return [] }
+
+            if (filters.subreddits.length) {
+                const set = new Set(filters.subreddits)
+                return data.filter(r => r.raw_mentions?.subreddit && set.has(r.raw_mentions.subreddit))
+            }
+            return data
+        }
+
+        // Re-render heatmap from cached data (used when only display filters change, no re-fetch)
+        function reRenderHeatmap() {
+            if (!heatmapData) return
+            const activeCompetitors = filters.competitors.length ? filters.competitors : COMPETITORS
+            const activeFeatures = filters.features.length ? filters.features : FEATURES
+            renderHeatmap(activeCompetitors, activeFeatures, heatmapData.map)
+            heatmapData.activeCompetitors = activeCompetitors
+            heatmapData.activeFeatures = activeFeatures
+            recomputeOpportunity()
+        }
+
+        // ── Heatmap data structure ─────────────────────────────────────────────────────
+        function buildHeatmapMap(rows) {
+            const map = {}
+            for (const row of rows) {
+                const key = `${row.competitor}|||${row.feature}`
+                if (!map[key]) map[key] = { scores: [] }
+                if (row.sentiment_score !== null && row.sentiment_score !== undefined) {
+                    map[key].scores.push(Number(row.sentiment_score))
+                }
+            }
+            for (const key of Object.keys(map)) {
+                const s = map[key].scores
+                map[key].avg = s.length ? s.reduce((a, b) => a + b, 0) / s.length : null
+                map[key].count = s.length
+            }
+            return map
+        }
+
+        // ── Heatmap render ─────────────────────────────────────────────────────────────
+        // Layout: features = rows (Y), competitors = columns (X)
+        // Both axes sorted by total mentions descending.
+        function renderHeatmap(competitors, features, map) {
+            const table = document.getElementById('heatmap-table')
+
+            // ── Pre-compute per-competitor totals (for column sort + summary row)
+            const compTotals = {}
+            for (const c of competitors) {
+                let mentions = 0, scoreSum = 0, scored = 0
+                for (const f of features) {
+                    const cell = map[`${c}|||${f}`]
+                    if (cell?.count) { mentions += cell.count; scoreSum += cell.avg * cell.count; scored += cell.count }
+                }
+                compTotals[c] = { mentions, avg: scored > 0 ? scoreSum / scored : null }
+            }
+
+            // ── Pre-compute per-feature totals (for row sort + summary columns)
+            const featTotals = {}
+            for (const f of features) {
+                let mentions = 0, scoreSum = 0, scored = 0
+                for (const c of competitors) {
+                    const cell = map[`${c}|||${f}`]
+                    if (cell?.count) { mentions += cell.count; scoreSum += cell.avg * cell.count; scored += cell.count }
+                }
+                featTotals[f] = { mentions, avg: scored > 0 ? scoreSum / scored : null }
+            }
+
+            // ── Sort both axes by mentions desc
+            const sortedComps = [...competitors].sort((a, b) => compTotals[b].mentions - compTotals[a].mentions)
+            const sortedFeats = [...features].sort((a, b) => featTotals[b].mentions - featTotals[a].mentions)
+
+            // ── thead: col headers + two sticky summary rows
+            // Col order: Feature | Mentions | Comp1 | Comp2 | ...
+            const stickyTh = 'position:sticky;left:0;z-index:2;background:#fafaf9;text-align:left;font-weight:500;color:var(--text-secondary);border-right:1px solid var(--border)'
+            let html = '<thead>'
+
+            // Row 0 — column labels
+            html += '<tr>'
+            html += `<th style="position:sticky;top:0;left:0;z-index:4;background:var(--surface);text-align:left">Feature</th>`
+            html += `<th class="summary-col" style="position:sticky;top:0;z-index:2" title="Feature mentions across all competitors">Mentions</th>`
+            for (const c of sortedComps) {
+                html += `<th style="position:sticky;top:0;z-index:2;background:var(--surface)" title="${c}">${c}</th>`
+            }
+            html += '</tr>'
+
+            // Row 1 — per-competitor mentions (sticky)
+            html += '<tr class="summary-row">'
+            html += `<th style="${stickyTh};top:var(--thead-h, 34px)" colspan="2">Mentions</th>`
+            for (const c of sortedComps) {
+                html += `<td class="summary-row-cell" style="position:sticky;top:var(--thead-h, 34px);background:#fafaf9;font-weight:500;color:var(--text-secondary);border-bottom:1px solid var(--border)">${compTotals[c].mentions || '—'}</td>`
+            }
+            html += '</tr>'
+
+            // Row 2 — per-competitor avg score (sticky, color-coded)
+            html += '<tr class="summary-row">'
+            html += `<th style="${stickyTh};top:var(--thead2-h, 64px);border-bottom:2px solid var(--border)" colspan="2">Avg score</th>`
+            for (const c of sortedComps) {
+                const { avg } = compTotals[c]
+                const bg = scoreToColor(avg)
+                html += `<td class="summary-row-cell" style="position:sticky;top:var(--thead2-h, 64px);background:${bg};font-weight:600;border-bottom:2px solid var(--border)">${avg !== null ? avg.toFixed(2) : '—'}</td>`
+            }
+            html += '</tr>'
+
+            html += '</thead><tbody>'
+
+            // ── Feature rows: Feature | Mentions | cells...
+            for (const f of sortedFeats) {
+                const { mentions } = featTotals[f]
+                html += `<tr><th title="${f}">${f}</th>`
+                html += `<td class="summary-col" style="font-weight:500;color:var(--text-secondary)">${mentions || '—'}</td>`
+                for (const c of sortedComps) {
+                    const cell = map[`${c}|||${f}`]
+                    const cellAvg = cell?.avg ?? null
+                    const bg = scoreToColor(cellAvg)
+                    if (cellAvg === null) {
+                        html += `<td class="no-data" title="${c} · ${f} · no data">—</td>`
+                    } else {
+                        html += `<td style="background:${bg}" data-competitor="${encodeURIComponent(c)}" data-feature="${encodeURIComponent(f)}" title="${c} · ${f} · ${cellAvg.toFixed(2)} (${cell.count} mention${cell.count !== 1 ? 's' : ''})">${cellAvg.toFixed(2)}</td>`
+                    }
+                }
+                html += '</tr>'
+            }
+
+            html += '</tbody>'
+            table.innerHTML = html
+
+            // Fix sticky top offsets for summary rows after render
+            requestAnimationFrame(() => {
+                const theadRows = table.querySelectorAll('thead tr')
+                const h0 = theadRows[0]?.getBoundingClientRect().height ?? 34
+                const h1 = theadRows[1]?.getBoundingClientRect().height ?? 31
+                const top1 = `${h0}px`
+                const top2 = `${h0 + h1}px`
+                theadRows[1]?.querySelectorAll('th, td').forEach(el => el.style.top = top1)
+                theadRows[2]?.querySelectorAll('th, td').forEach(el => el.style.top = top2)
+            })
+
+            // Click delegation — opens inline drawer below heatmap
+            table.onclick = e => {
+                const td = e.target.closest('td[data-competitor]')
+                if (!td) return
+                const competitor = decodeURIComponent(td.dataset.competitor)
+                const feature = decodeURIComponent(td.dataset.feature)
+                table.querySelectorAll('td.selected').forEach(el => el.classList.remove('selected'))
+                td.classList.add('selected')
+                openDrawer(competitor, feature)
+            }
+        }
+
+        // ── Main apply filters ─────────────────────────────────────────────────────────
+        async function applyFilters() {
+            hideError('heatmap-error')
+            document.getElementById('heatmap-loading').hidden = false
+            document.getElementById('heatmap-wrap').hidden = true
+            document.getElementById('heatmap-empty').hidden = true
+
+            const rows = await fetchHeatmapRows()
+            document.getElementById('heatmap-loading').hidden = true
+
+            if (!rows.length) {
+                document.getElementById('heatmap-empty').hidden = false
+                heatmapData = null
+                recomputeOpportunity()
+                return
+            }
+
+            const candidateCompetitors = filters.competitors.length ? filters.competitors : COMPETITORS
+            const map = buildHeatmapMap(rows)
+
+            // Auto-hide competitors with no data at all
+            const activeCompetitors = candidateCompetitors.filter(c =>
+                FEATURES.some(f => map[`${c}|||${f}`]?.count > 0)
+            )
+            syncCompetitorPills(activeCompetitors)
+
+            // Auto-hide features with no data for any active competitor
+            const featuresWithData = FEATURES.filter(f =>
+                activeCompetitors.some(c => map[`${c}|||${f}`]?.count > 0)
+            )
+            syncFeaturePills(featuresWithData)
+            filters.features.length = 0
+            featuresWithData.forEach(f => filters.features.push(f))
+
+            renderHeatmap(activeCompetitors, featuresWithData, map)
+
+            document.getElementById('heatmap-wrap').hidden = false
+            heatmapData = { map, activeCompetitors, activeFeatures: featuresWithData }
+            recomputeOpportunity()
+        }
+
+        // ── Pain Points drawer (inline below heatmap) ─────────────────────────────────
+        function openDrawer(competitor, feature) {
+            ppState.competitor = competitor
+            ppState.feature = feature
+            ppState.page = 0
+            ppState.hasFilter = true
+            ppState.sortBy = document.getElementById('pp-sort').value
+
+            document.getElementById('drawer-title').textContent = `${competitor} — ${feature}`
+            document.getElementById('pp-no-filter').hidden = true
+
+            const drawer = document.getElementById('pp-drawer')
+            drawer.hidden = false
+            drawer.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+            loadPainPoints()
+        }
+
+        function closeDrawer() {
+            document.getElementById('pp-drawer').hidden = true
+            document.getElementById('heatmap-table').querySelectorAll('td.selected')
+                .forEach(el => el.classList.remove('selected'))
+            ppState.hasFilter = false
+        }
+
+        async function fetchPainPoints() {
+            const { competitor, feature, page, sortBy } = ppState
+
+            let q = client
+                .from('mention_analyses')
+                .select('id, competitor, feature, sentiment_score, sentiment_label, supporting_quote, analyzed_at, mention_id, raw_mentions(subreddit, url, score)')
+                .eq('competitor', competitor)
+                .eq('feature', feature)
+
+            // Sort: sentiment asc = worst first; reddit score desc = most popular first
+            if (sortBy === 'sentiment') {
+                q = q.order('sentiment_score', { ascending: true })
+            } else {
+                // Supabase JS v2 may not support ordering by joined column;
+                // fetch all and sort client-side (safe at ≤350 rows)
+                q = q.order('sentiment_score', { ascending: true }) // default; client overrides below
+            }
+
+            q = q.range(page * 50, page * 50 + 49)
+
+            const { data, error } = await q
+            if (error) { showError('pp-error', error.message); return [] }
+
+            // Client-side sort by Reddit score if needed
+            if (sortBy === 'reddit') {
+                data.sort((a, b) => (b.raw_mentions?.score ?? 0) - (a.raw_mentions?.score ?? 0))
+            }
+
+            return data
+        }
+
+        async function loadPainPoints() {
+            if (!ppState.hasFilter) return
+
+            hideError('pp-error')
+            document.getElementById('pp-loading').hidden = false
+            document.getElementById('pp-table-wrap').hidden = true
+            document.getElementById('pp-empty').hidden = true
+            document.getElementById('pp-pagination').hidden = true
+
+            const rows = await fetchPainPoints()
+            document.getElementById('pp-loading').hidden = true
+
+            if (!rows.length) {
+                document.getElementById('pp-empty').hidden = false
+                return
+            }
+
+            renderPainPointsTable(rows)
+            document.getElementById('pp-table-wrap').hidden = false
+            renderPagination(rows.length)
+            document.getElementById('pp-pagination').hidden = false
+        }
+
+        function esc(s) {
+            return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;')
+        }
+
+        function renderPainPointsTable(rows) {
+            const table = document.getElementById('pp-table')
+            let html = `<thead><tr>
+    <th>Sentiment</th>
+    <th>Label</th>
+    <th>Subreddit</th>
+    <th>Reddit score</th>
+    <th>Quote &amp; source</th>
+  </tr></thead><tbody>`
+
+            for (const row of rows) {
+                const score = row.sentiment_score !== null ? Number(row.sentiment_score) : null
+                const bg = scoreToColor(score)
+                const label = score !== null ? score.toFixed(2) : '—'
+                const sub = esc(row.raw_mentions?.subreddit ?? '—')
+                const rawUrl = row.raw_mentions?.url ?? null
+                const safeUrl = rawUrl && rawUrl.startsWith('https://') ? rawUrl : null
+                const rscore = row.raw_mentions?.score ?? '—'
+                const quote = esc(row.supporting_quote ?? '')
+                const sentLabel = esc(row.sentiment_label ?? '—')
+
+                html += `<tr>
+      <td><span class="badge" style="background:${bg}">${label}</span></td>
+      <td style="color:var(--text-secondary);font-size:0.78rem;white-space:nowrap">${sentLabel}</td>
+      <td style="color:var(--text-secondary);font-size:0.8rem">r/${sub}</td>
+      <td style="text-align:right;color:var(--text-secondary);font-size:0.8rem">${rscore}</td>
+      <td>
+        ${quote ? `<div class="pp-quote">"${quote}"</div>` : ''}
+        ${safeUrl ? `<a class="pp-link" href="${safeUrl}" target="_blank" rel="noopener noreferrer">View post →</a>` : ''}
+      </td>
+    </tr>`
+            }
+            html += '</tbody>'
+            table.innerHTML = html
+        }
+
+        function renderPagination(rowCount) {
+            const div = document.getElementById('pp-pagination')
+            const { page } = ppState
+            const isLast = rowCount < 50
+
+            div.innerHTML = `
+    <button id="pp-prev" ${page === 0 ? 'disabled' : ''}>← Prev</button>
+    <span>Page ${page + 1}</span>
+    <button id="pp-next" ${isLast ? 'disabled' : ''}>Next →</button>
+  `
+            document.getElementById('pp-prev').addEventListener('click', () => {
+                ppState.page--; loadPainPoints()
+            })
+            document.getElementById('pp-next').addEventListener('click', () => {
+                ppState.page++; loadPainPoints()
+            })
+        }
+
+        // Sort change
+        document.getElementById('pp-sort').addEventListener('change', e => {
+            ppState.sortBy = e.target.value
+            ppState.page = 0
+            if (ppState.hasFilter) loadPainPoints()
+        })
+
+        // Close drawer button
+        document.getElementById('pp-close').addEventListener('click', closeDrawer)
+
+        // ── Opportunity Matrix ─────────────────────────────────────────────────────────
+        let opportunityThreshold = 0.45
+
+        function computeOpportunities(map, competitors, features, threshold) {
+            const weak = [], unexplored = []
+            // features = activeFeatures (only those with at least one mention)
+            for (const feature of features) {
+                const scores = competitors
+                    .map(c => map[`${c}|||${feature}`]?.avg)
+                    .filter(s => s !== undefined && s !== null)
+                if (scores.every(s => s < threshold)) {
+                    const avgScore = scores.reduce((a, b) => a + b, 0) / scores.length
+                    weak.push({ feature, avgScore, competitorCount: scores.length })
+                }
+            }
+            // Features absent from activeFeatures have zero mentions across all competitors
+            const activeSet = new Set(features)
+            for (const feature of FEATURES) {
+                if (!activeSet.has(feature)) unexplored.push({ feature })
+            }
+            weak.sort((a, b) => a.avgScore - b.avgScore)
+            return { weak, unexplored }
+        }
+
+        function renderOpportunityMatrix(map, competitors, features, threshold) {
+            const { weak, unexplored } = computeOpportunities(map, competitors, features, threshold)
+            const empty = document.getElementById('opp-empty')
+            const noData = document.getElementById('opp-no-data')
+            const wrap = document.getElementById('opp-table-wrap')
+            const table = document.getElementById('opp-table')
+
+            noData.hidden = true
+
+            if (!weak.length && !unexplored.length) {
+                empty.hidden = false
+                wrap.hidden = true
+                table.innerHTML = ''
+                return
+            }
+            empty.hidden = true
+            wrap.hidden = false
+
+            let html = `<thead><tr>
+    <th>Feature</th>
+    <th>Avg sentiment</th>
+    <th>Signal</th>
+  </tr></thead><tbody>`
+
+            for (const opp of weak) {
+                const bg = scoreToColor(opp.avgScore)
+                html += `<tr>
+      <td>${opp.feature}</td>
+      <td><span class="badge" style="background:${bg}">${opp.avgScore.toFixed(2)}</span></td>
+      <td style="color:var(--text-secondary);font-size:0.8rem">${opp.competitorCount} competitor${opp.competitorCount !== 1 ? 's' : ''} — weak sentiment</td>
+    </tr>`
+            }
+
+            for (const opp of unexplored) {
+                html += `<tr>
+      <td>${opp.feature}</td>
+      <td><span class="badge" style="background:#e8f4fd;color:#1d6fa4">no data</span></td>
+      <td style="color:var(--text-muted);font-size:0.8rem;font-style:italic">Unexplored — no Reddit signal yet</td>
+    </tr>`
+            }
+
+            html += '</tbody>'
+            table.innerHTML = html
+        }
+
+        function recomputeOpportunity() {
+            if (!heatmapData) {
+                document.getElementById('opp-no-data').hidden = false
+                document.getElementById('opp-empty').hidden = true
+                document.getElementById('opp-table-wrap').hidden = true
+                return
+            }
+            const { map, activeCompetitors, activeFeatures } = heatmapData
+            renderOpportunityMatrix(map, activeCompetitors, activeFeatures, opportunityThreshold)
+        }
+
+        // Threshold slider
+        document.getElementById('opp-threshold').addEventListener('input', e => {
+            opportunityThreshold = Number(e.target.value)
+            document.getElementById('opp-threshold-val').textContent = opportunityThreshold.toFixed(2)
+            recomputeOpportunity()
+        })
+
+        // ── Init ───────────────────────────────────────────────────────────────────────
+        async function init() {
+            initTabs()
+            initFilters()
+            await applyFilters()
+        }
+
+        document.addEventListener('DOMContentLoaded', init)
+    </script>
+
 </body>
 
 </html>
